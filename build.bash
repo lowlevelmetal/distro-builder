@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 IMAGE_SET="no"
+IMAGE_REQUIRED_COMPLETED="no"
 IMAGE_NAME=""
 IMAGE_LOOP_DEVICE=""
 IMAGE_ROOTFS_MOUNT="/tmp/rootfs"
+IMAGE_ARCH=""
 
 on_error() {
     echo "Fatal error occured. Exiting for safety"
@@ -25,6 +27,21 @@ print_main_menu() {
     echo "3. Select Image"
     echo "4. Deselect Image"
     echo "5. Help"
+    echo "q. Quit"
+}
+
+print_arch_menu() {
+    echo "-- SELECT ARCH --"
+    echo
+    echo "1. x86_64"
+    echo "2. arm64"
+}
+
+print_install_menu() {
+    echo "-- INSTALL SOFTWARE --"
+    echo
+    echo "1. Install Requirements"
+    echo "2. Install Extra"
 }
 
 select_option() {
@@ -35,6 +52,19 @@ select_option() {
 cleanup() {
     echo "Cleaning up..."
     deselect_image
+}
+
+mount_partitions() {
+    mkdir -p ${IMAGE_ROOTFS_MOUNT}
+
+    sudo mount "${IMAGE_LOOP_DEVICE}p2" ${IMAGE_ROOTFS_MOUNT}
+    sudo mkdir -p ${IMAGE_ROOTFS_MOUNT}/{bin,boot,dev,etc,home,lib,mnt,opt,proc,root,run,sbin,srv,sys,tmp,usr,var}
+    sudo chmod 755 ${IMAGE_ROOTFS_MOUNT}/{bin,boot,etc,lib,mnt,root,run,sbin,srv,usr,var}
+    sudo mount "${IMAGE_LOOP_DEVICE}p1" ${IMAGE_ROOTFS_MOUNT}/boot
+
+    sudo mount --bind /dev ${IMAGE_ROOTFS_MOUNT}/dev
+    sudo mount -t proc /proc ${IMAGE_ROOTFS_MOUNT}/proc
+    sudo mount -t sysfs /sys ${IMAGE_ROOTFS_MOUNT}/sys
 }
 
 select_image() {
@@ -57,8 +87,7 @@ select_image() {
     if [[ "$2" == "yes" ]]; then
         echo "Mounting partitions"
         
-        sudo mount "${IMAGE_LOOP_DEVICE}p2" ${IMAGE_ROOTFS_MOUNT}
-        sudo mount "${IMAGE_LOOP_DEVICE}p1" ${IMAGE_ROOTFS_MOUNT}/boot 
+        mount_partitions
     fi
 
     IMAGE_SET="yes"
@@ -69,11 +98,14 @@ select_image() {
 deselect_image() {
     if [[ ${IMAGE_SET} == "no" ]]; then
         echo "No image selected"
-        return 1
+        return 0
     fi
 
-    sudo umount ${IMAGE_LOOP_DEVICE}p1
-    sudo umount ${IMAGE_LOOP_DEVICE}p2
+    sudo umount ${IMAGE_ROOTFS_MOUNT}/sys
+    sudo umount ${IMAGE_ROOTFS_MOUNT}/proc
+    sudo umount ${IMAGE_ROOTFS_MOUNT}/dev
+    sudo umount ${IMAGE_ROOTFS_MOUNT}/boot
+    sudo umount ${IMAGE_ROOTFS_MOUNT}
 
     sudo losetup -d ${IMAGE_LOOP_DEVICE}
 
@@ -94,7 +126,23 @@ create_base_image() {
     read -p "Boot partition size in MiB: " bsize
     read -p "Root partition size in % of remaining space: " rsize
 
-    if [[ -z "${name}" || -z "${size}" || -z "${bsize}" || -z "${rsize}" ]]; then
+    print_arch_menu
+    opt="$(select_option)"
+
+    case "${opt}" in
+        1)
+            arch="x86_64"
+            ;;
+        2)
+            arch="arm64"
+            ;;
+        *)
+            echo "Invalid option"
+            return 0
+            ;;
+    esac
+
+    if [[ -z "${name}" || -z "${size}" || -z "${bsize}" || -z "${rsize}" || -z "${arch}" ]]; then
         echo "Invalid build option detected"
     fi
 
@@ -123,14 +171,34 @@ create_base_image() {
     sudo mkfs.ext4 "${IMAGE_LOOP_DEVICE}"p2
 
     # Mount partitions and create initial directory structure
-    sudo mount "${IMAGE_LOOP_DEVICE}p2" ${IMAGE_ROOTFS_MOUNT}
-    sudo mkdir -p ${IMAGE_ROOTFS_MOUNT}/{bin,boot,dev,etc,home,lib,mnt,opt,proc,root,run,sbin,srv,sys,tmp,usr,var}
-    sudo chmod 755 ${IMAGE_ROOTFS_MOUNT}/{bin,boot,etc,lib,mnt,root,run,sbin,srv,usr,var}
-    sudo mount "${IMAGE_LOOP_DEVICE}p1" ${IMAGE_ROOTFS_MOUNT}/boot
+    mount_partitions
+
+    sudo sh -c "echo "${arch}" > ${IMAGE_ROOTFS_MOUNT}/.arch"
 
     export IMAGE_NAME="${name}"
 
     return 0
+}
+
+install_software() {
+    if [[ "${IMAGE_SET}" == "no" ]]; then
+        echo "Please select an image"
+        return 0
+    fi
+
+    print_install_menu
+    opt="$(select_option)"
+    
+    case "${opt}" in 
+        1)
+            ;;
+        2)
+            ;;
+        *)
+            echo "Invalid option"
+            return 0
+            ;;
+    esac
 }
 
 echo "Linux Distrobution Builder"
