@@ -7,6 +7,10 @@ IMAGE_LOOP_DEVICE=""
 IMAGE_ROOTFS_MOUNT="/tmp/rootfs"
 IMAGE_ARCH=""
 
+export REQ_BUILDDIR="./.req_builddir"
+export REQ_INSTALLDIR="./.req_installdir"
+export OPT_BUILDDIR="./.opt_builddir"
+
 on_error() {
     echo "Fatal error occured. Exiting for safety"
     echo "Handles and mounts may still be open on your machine"
@@ -88,6 +92,7 @@ select_image() {
         echo "Mounting partitions"
         
         mount_partitions
+        IMAGE_ARCH="$(cat ${IMAGE_ROOTFS_MOUNT}/.arch)"
     fi
 
     IMAGE_SET="yes"
@@ -176,8 +181,28 @@ create_base_image() {
     sudo sh -c "echo "${arch}" > ${IMAGE_ROOTFS_MOUNT}/.arch"
 
     export IMAGE_NAME="${name}"
+    export IMAGE_ARCH="${arch}"
 
     return 0
+}
+
+install_required_software() {
+    mkdir -p ${REQ_BUILDDIR} ${REQ_INSTALLDIR}
+
+    # Loop through each file in the directory
+    for file in required/*; do
+        # Check if the file exists and is a regular file
+        if [ -f "$file" ]; then
+            # Append the absolute path of the file to the array
+            file_path=("$(realpath "$file")")
+
+            ${file_path} build ${IMAGE_ARCH}
+            ${file_path} install ${IMAGE_ARCH}
+        fi
+    done
+
+    #required/minimal-gcc.bash build ${IMAGE_ARCH}
+    #required/minimal-gcc.bash install ${IMAGE_ARCH}
 }
 
 install_software() {
@@ -191,6 +216,7 @@ install_software() {
     
     case "${opt}" in 
         1)
+            install_required_software
             ;;
         2)
             ;;
@@ -213,6 +239,7 @@ while true; do
             create_base_image           
             ;;
         2)
+            install_software
             ;;
         3)
             read -p "Image: " img
