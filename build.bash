@@ -4,12 +4,15 @@ IMAGE_SET="no"
 IMAGE_REQUIRED_COMPLETED="no"
 IMAGE_NAME=""
 IMAGE_LOOP_DEVICE=""
-IMAGE_ROOTFS_MOUNT="/tmp/rootfs"
+export IMAGE_ROOTFS_MOUNT="/tmp/rootfs"
 IMAGE_ARCH=""
 
 export REQ_BUILDDIR="./.req_builddir"
 export REQ_INSTALLDIR="./.req_installdir"
 export OPT_BUILDDIR="./.opt_builddir"
+
+export CC="$(realpath ${REQ_INSTALLDIR}/usr/bin/gcc)"
+export CXX="$(realpath ${REQ_INSTALLDIR}/usr/bin/g++)"
 
 on_error() {
     echo "Fatal error occured. Exiting for safety"
@@ -44,8 +47,8 @@ print_arch_menu() {
 print_install_menu() {
     echo "-- INSTALL SOFTWARE --"
     echo
-    echo "1. Install Requirements"
-    echo "2. Install Extra"
+    echo "1. Setup Compiler"
+    echo "2. Build/Install Software"
 }
 
 select_option() {
@@ -196,13 +199,61 @@ install_required_software() {
             # Append the absolute path of the file to the array
             file_path=("$(realpath "$file")")
 
+            FOUND="$( ${file_path} test_installed ${IMAGE_ARCH} )"
+            if [[ "${FOUND}" == "yes" ]]; then
+                echo "${file_path} is already installed"
+                read -p "Do you want to update ${file_path} (y/n) " cont
+                if [[ "${cont}" != "y" ]]; then
+                    continue
+                fi
+            fi
+
+            if [[ "${FOUND}" != "no" && "${FOUND}" != "yes" ]]; then
+                echo "${file_path}: ${FOUND}"
+                return 0
+            fi
+
             ${file_path} build ${IMAGE_ARCH}
             ${file_path} install ${IMAGE_ARCH}
         fi
     done
 
-    #required/minimal-gcc.bash build ${IMAGE_ARCH}
-    #required/minimal-gcc.bash install ${IMAGE_ARCH}
+    IMAGE_REQUIRED_COMPLETED="yes"   
+}
+
+install_optional_software() {
+    mkdir -p ${OPT_BUILDDIR}
+
+    for file in build-scripts/*; do
+
+        if [[ -f "$file" ]]; then
+            file_path=("$(realpath "$file")")
+
+            FOUND="$( ${file_path} test_installed ${IMAGE_ARCH} )"
+            if [[ "${FOUND}" == "yes" ]]; then
+                echo "${file_path} is already installed"
+                read -p "Do you want to update ${file_path} (y/n) " cont
+                if [[ "${cont}" != "y" ]]; then
+                    continue
+                fi
+            fi
+
+            if [[ "${FOUND}" != "no" && "${FOUND}" != "yes" ]]; then
+                echo "${file_path}: ${FOUND}"
+                continue
+            fi
+
+            read -p "Do you want to build/install ${file} (y/n)" cont
+            if [[ "${cont}" != "y" ]]; then
+                echo "Skipping..."
+                continue
+            fi
+
+            ${file_path} build ${IMAGE_ARCH}
+            ${file_path} install ${IMAGE_ARCH} 
+        fi
+
+    done
 }
 
 install_software() {
@@ -219,6 +270,7 @@ install_software() {
             install_required_software
             ;;
         2)
+            install_optional_software
             ;;
         *)
             echo "Invalid option"

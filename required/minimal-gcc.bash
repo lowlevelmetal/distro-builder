@@ -9,7 +9,9 @@ on_error() {
 
 trap 'on_error $LINENO' ERR
 PREFIX=""
+export SOFT_FOUND="no"
 
+# Build routine
 _build() {
     arch="$1"
     threads="$(( $(nproc) - 2 ))"
@@ -23,9 +25,23 @@ _build() {
     make -j${threads}
 }
 
+# Install routine
 _install() {
     cd gcc
     make install
+}
+
+# Check for valid install routine
+_test() {
+    if [[ -e "${REQ_INSTALLDIR}/usr/bin/gcc" ]]; then
+        return 0
+    fi
+
+    if [[ -e "${REQ_INSTALLDIR}/usr/bin/g++" ]]; then
+        return 0
+    fi
+
+    export SOFT_FOUND="yes"
 }
 
 if [[ -z "${REQ_BUILDDIR}" || -z "${REQ_INSTALLDIR}" ]]; then
@@ -49,8 +65,13 @@ case "$1" in
     install)
         _install
         ;;
+    test_installed)
+        _test
+        ;;
     *)
         exit 1
 esac
+
+echo "${SOFT_FOUND}"
 
 exit 0
