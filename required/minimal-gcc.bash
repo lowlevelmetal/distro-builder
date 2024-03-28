@@ -9,7 +9,7 @@ on_error() {
 
 trap 'on_error $LINENO' ERR
 PREFIX=""
-export SOFT_FOUND="no"
+RET="yes"
 
 # Build routine
 _build() {
@@ -18,6 +18,7 @@ _build() {
 
     git clone git://gcc.gnu.org/git/gcc.git
     cd gcc
+    git pull origin master
 
     mkdir -p ${REQ_INSTALLDIR}/usr
 
@@ -41,7 +42,7 @@ _test() {
         return 0
     fi
 
-    export SOFT_FOUND="yes"
+    RET="no"
 }
 
 if [[ -z "${REQ_BUILDDIR}" || -z "${REQ_INSTALLDIR}" ]]; then
@@ -72,6 +73,6 @@ case "$1" in
         exit 1
 esac
 
-echo "${SOFT_FOUND}"
+echo "${RET}"
 
 exit 0

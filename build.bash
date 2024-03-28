@@ -5,7 +5,7 @@ IMAGE_REQUIRED_COMPLETED="no"
 IMAGE_NAME=""
 IMAGE_LOOP_DEVICE=""
 export IMAGE_ROOTFS_MOUNT="/tmp/rootfs"
-IMAGE_ARCH=""
+export ARCH=""
 
 export REQ_BUILDDIR="./.req_builddir"
 export REQ_INSTALLDIR="./.req_installdir"
@@ -41,7 +41,7 @@ print_arch_menu() {
     echo "-- SELECT ARCH --"
     echo
     echo "1. x86_64"
-    echo "2. arm64"
+    echo "2. aarch64"
 }
 
 print_install_menu() {
@@ -95,7 +95,7 @@ select_image() {
         echo "Mounting partitions"
         
         mount_partitions
-        IMAGE_ARCH="$(cat ${IMAGE_ROOTFS_MOUNT}/.arch)"
+        ARCH="$(cat ${IMAGE_ROOTFS_MOUNT}/.arch)"
     fi
 
     IMAGE_SET="yes"
@@ -142,7 +142,7 @@ create_base_image() {
             arch="x86_64"
             ;;
         2)
-            arch="arm64"
+            arch="aarch64"
             ;;
         *)
             echo "Invalid option"
@@ -184,7 +184,7 @@ create_base_image() {
     sudo sh -c "echo "${arch}" > ${IMAGE_ROOTFS_MOUNT}/.arch"
 
     export IMAGE_NAME="${name}"
-    export IMAGE_ARCH="${arch}"
+    export ARCH="${arch}"
 
     return 0
 }
@@ -199,7 +199,7 @@ install_required_software() {
             # Append the absolute path of the file to the array
             file_path=("$(realpath "$file")")
 
-            FOUND="$( ${file_path} test_installed ${IMAGE_ARCH} )"
+            FOUND="$( ${file_path} test_installed ${ARCH} )"
             if [[ "${FOUND}" == "yes" ]]; then
                 echo "${file_path} is already installed"
                 read -p "Do you want to update ${file_path} (y/n) " cont
@@ -213,8 +213,8 @@ install_required_software() {
                 return 0
             fi
 
-            ${file_path} build ${IMAGE_ARCH}
-            ${file_path} install ${IMAGE_ARCH}
+            ${file_path} build ${ARCH}
+            ${file_path} install ${ARCH}
         fi
     done
 
@@ -229,7 +229,7 @@ install_optional_software() {
         if [[ -f "$file" ]]; then
             file_path=("$(realpath "$file")")
 
-            FOUND="$( ${file_path} test_installed ${IMAGE_ARCH} )"
+            FOUND="$( ${file_path} test_installed ${ARCH} )"
             if [[ "${FOUND}" == "yes" ]]; then
                 echo "${file_path} is already installed"
                 read -p "Do you want to update ${file_path} (y/n) " cont
@@ -249,8 +249,8 @@ install_optional_software() {
                 continue
             fi
 
-            ${file_path} build ${IMAGE_ARCH}
-            ${file_path} install ${IMAGE_ARCH} 
+            ${file_path} build ${ARCH}
+            ${file_path} install ${ARCH} 
         fi
 
     done
