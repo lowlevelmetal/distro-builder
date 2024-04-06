@@ -213,8 +213,8 @@ install_required_software() {
                 return 0
             fi
 
-            ${file_path} build ${ARCH}
-            ${file_path} install ${ARCH}
+            CXX=g++ CC=gcc ${file_path} build ${ARCH}
+            CXX=g++ CC=gcc ${file_path} install ${ARCH}
         fi
     done
 

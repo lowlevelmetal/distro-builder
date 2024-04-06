@@ -26,7 +26,7 @@ if [[ -z "${ARCH}" ]]; then
 fi
 
 on_error() {
-    echo "GCC build script failure"
+    echo "ncurses build script failure"
 
     exit 1
 }
@@ -41,37 +41,38 @@ if [[ ${THREADS} < 1 ]]; then
     THREADS=1
 fi
 
-# The test routine is used to check if the package has already been installed
-# You are required to echo the result to inform distro-builder of installation status
+_build() {
+    cd ${BUILDDIR}
+    mkdir ncurses
+    cd ncurses
+
+    wget https://ftp.gnu.org/gnu/ncurses/ncurses-6.4.tar.gz
+
+    tar xvf ncurses-6.4.tar.gz
+    rm -f ncurses-6.4.tar.gz
+    cd ncurses-6.4
+
+    mkdir build
+    cd build
+
+    ../configure --with-shared --with-termlib --prefix=${PREFIX}
+
+    make -j${THREADS}
+
+}
+
+_install() {
+    cd ${BUILDDIR}/ncurses/ncurses-6.4/build
+    sudo make install
+}
+
 _test() {
-    if [[ -e "${PREFIX}/bin/gcc" ]]; then
+    if [[ -e "${PREFIX}/bin/captoinfo" ]]; then
         echo "yes"
         return 0
     fi
-
+    
     echo "no"
-}
-
-# The build routine is required...
-_build() {
-    cd ${BUILDDIR}
-
-    rm -rf gcc
-    git clone git://gcc.gnu.org/git/gcc.git
-    cd gcc
-    git pull origin master
-
-    mkdir -p ${PREFIX} ./build
-    cd build
-
-    ../configure --target="${ARCH}-linux-gnu" --program-prefix= --prefix="${PREFIX}" --disable-bootstrap --disable-multilib --enable-languages=c,c++
-    make -j${THREADS}
-}
-
-# The install routine is required...
-_install() {
-    cd ${BUILDDIR}/gcc/build
-    sudo make install
 }
 
 

@@ -7,7 +7,7 @@ on_error() {
 }
 
 trap 'on_error $LINENO' ERR
-PREFIX="${IMAGE_ROOTFS_MOUNT}/usr"
+PREFIX="${IMAGE_ROOTFS_MOUNT}"
 RET="yes"
 
 _test() {
@@ -22,6 +22,7 @@ _build() {
     arch="$1"
     threads="$(( $(nproc) - 2 ))"
 
+    sudo rm -rf glibc
     git clone https://sourceware.org/git/glibc.git
     cd glibc
     git checkout master
@@ -31,7 +32,7 @@ _build() {
     mkdir -p build
     cd build
 
-    ../configure CC="${CC}" --prefix="${PREFIX}"
+    ../configure --prefix="${PREFIX}" --libdir="${PREFIX}/lib64"
 
     make -j${threads}
     cd ../../

@@ -14,7 +14,7 @@ RET="yes"
 # Build routine
 _build() {
     arch="$1"
-    threads="$(( $(nproc) - 2 ))"
+    threads="-j$(( $(nproc) - 2 ))"
 
     git clone git://gcc.gnu.org/git/gcc.git
     cd gcc
@@ -22,8 +22,9 @@ _build() {
 
     mkdir -p ${REQ_INSTALLDIR}/usr
 
+    make distclean
     ./configure --prefix="${PREFIX}" --disable-bootstrap --disable-multilib --enable-languages=c,c++
-    make -j${threads}
+    make ${threads}
 }
 
 # Install routine
